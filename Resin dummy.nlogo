@@ -36,6 +36,7 @@ people-own [
 attitudes-own [
   key_item
   level
+  popularity
   lv-community
 ]
 
@@ -65,6 +66,7 @@ to go
   compute-neighbors-attitude-matrix
   update-internal-coherence
   update-appearance
+  ;if remainder ticks 2 = 0 [export-view (word #levels ticks ".png")]
   tick
 end
 
@@ -190,12 +192,10 @@ to compute-global-attitude-matrix
       let #equal 0
       let r 0
       let list1 reduce sentence (list matrix:get-column dummy-matrix 0)
-      let list2  reduce sentence (list matrix:get-column dummy-matrix n)
-      ; create matrix containing two columns for which correlations are calculated
+      let list2  reduce sentence (list matrix:get-column dummy-matrix n)                    ; create matrix containing two columns for which correlations are calculated
       (foreach list1 list2 [ [x y] -> if x = y [set #equal #equal + 1] ])
       set r  2 * (#equal / length list1 - 0.5) - correlation-correction
-      set empty-list lput r  empty-list
-      ; get correlation coefficient (r) for the two columns and put them in list
+      set empty-list lput r  empty-list                                                  ; get correlation coefficient (r) for the two columns and put them in list
       set n n + 1
     ]
    ; output-print empty-list
@@ -368,15 +368,6 @@ to compute-new-attitude [attitude-correlation-matrix]
     let candidate-correlation-list (list)
     foreach candidate-nodes [ n ->
       let dummy-list position-list
-      ;if c = false [
-      ; print (word "old item list: " item-list)
-      ;print (word "old level list: " level-list)
-      ;print (word "item in dispute: " item-in-dispute)
-      ; print (word "level in dispute: " level-in-dispute)
-      ; print (word "attitude in dispute: " attitude-in-dispute)
-      ; print (word "dandidate attitudes: " candidate-nodes)
-      ; print (word "position list: " position-list)
-      ; print c  ]
       let new-correlation (list)
       repeat (c) [
         let cor item n matrix:get-column attitude-correlation-matrix item 0 dummy-list
@@ -386,17 +377,26 @@ to compute-new-attitude [attitude-correlation-matrix]
       if length dummy-list > 0 [
         foreach dummy-list [
           z  ->
-          set new-correlation lput item z matrix:get-column attitude-correlation-matrix n new-correlation]
+          set new-correlation lput (item z matrix:get-column attitude-correlation-matrix n) new-correlation]
       ]
-      set candidate-correlation-list lput sum new-correlation candidate-correlation-list
+      set candidate-correlation-list lput sum (new-correlation) candidate-correlation-list
     ]
     let pos length candidate-correlation-list
     let cdt-min min candidate-correlation-list
+  ifelse cdt-min < 0 [
+    set cdt-min abs cdt-min ^ k * -1
+  ][
+    set cdt-min cdt-min ^ k]
     let normalised-list (list)
     let probability-list (list)
-    foreach candidate-correlation-list [
-      x -> set normalised-list lput (x - cdt-min) normalised-list
-    ]
+  foreach candidate-correlation-list [
+    x ->
+    ifelse x < 0 [
+      set x abs x ^ k * -1
+    ][
+      set x x ^ k]
+    set normalised-list lput (x - cdt-min) normalised-list
+  ]
     let sm-nl sum normalised-list
 
     foreach normalised-list [
@@ -494,10 +494,10 @@ to update-appearance
     if hide-people? [
       set show-people? true
     show/hide-people]
-    compute-attitude-network
     ask patches [ set pcolor white]
+    size-attitude-nodes-on-popularity
     ; ask attitudes [ask patch-at 0 1 [ set plabel [level] of myself]]
-    repeat 10 [layout-spring attitudes attitude-links  0.5 1 #nodes * 10]
+    repeat 3 [layout-spring attitudes attitude-links  0.5 1 #nodes * 10]
     ask attitudes [set label level
     set label-color black]
 
@@ -508,8 +508,31 @@ to update-appearance
       if show-correlations?  = false [hide-link]
     ]
     color-communities-louvain
+    ask patch 25 25 [
+      set plabel  (word "k = " k)
+      set plabel-color black ]
+        ask patch 25 23 [
+      set plabel  (word "rb = " rb)
+      set plabel-color black ]
+            ask patch 25 21 [
+      set plabel  (word "ticks = " ticks)
+      set plabel-color black ]
   ]
 
+end
+
+to size-attitude-nodes-on-popularity
+  ask attitudes [set popularity 0]
+  ask people [
+    let counter 0
+    foreach level-list [x ->
+      if x > 0 [
+        ask attitude counter [set popularity popularity + 1 ]
+      ]
+      set counter counter + 1 ]
+  ]
+  ask attitudes [
+    set size 1 + 30 * (popularity / population-size) ]
 end
 
 to show/hide-people
@@ -782,7 +805,7 @@ SLIDER
 #items
 1
 12
-5.0
+7.0
 1
 1
 NIL
@@ -829,7 +852,7 @@ rb
 rb
 0
 1
-0.07
+0.0
 0.01
 1
 NIL
@@ -852,7 +875,7 @@ true
 "" ""
 PENS
 "global" 0.05 1 -16449023 true "" "histogram [mean-global-internal-coherence] of people"
-"Individual" 0.05 1 -2674135 true "" "histogram [mean-neighbors-internal-coherence] of people"
+"Neighbors" 0.05 1 -2674135 true "" "histogram [mean-neighbors-internal-coherence] of people"
 
 SWITCH
 145
@@ -933,7 +956,7 @@ rewiring-proportion
 rewiring-proportion
 0
 1
-0.06
+0.02
 0.01
 1
 NIL
@@ -979,7 +1002,7 @@ MONITOR
 111
 1418
 156
-mean individual-internal-coherence
+mean neighbor-internal-coherence
 mean [mean-neighbors-internal-coherence] of people
 17
 1
@@ -1002,7 +1025,7 @@ true
 "" ""
 PENS
 "Global" 1.0 0 -16777216 true "" "plot mean [mean-global-internal-coherence] of people"
-"Individual" 1.0 0 -2674135 true "" "plot mean [mean-neighbors-internal-coherence] of people"
+"Neighbors" 1.0 0 -2674135 true "" "plot mean [mean-neighbors-internal-coherence] of people"
 
 TEXTBOX
 221
@@ -1103,7 +1126,7 @@ world-over-neighbors
 world-over-neighbors
 0
 1
-0.35
+0.0
 0.01
 1
 NIL
@@ -1175,6 +1198,21 @@ Subgroups
 14
 0.0
 1
+
+SLIDER
+177
+186
+298
+219
+k
+k
+0
+100
+0.0
+0.1
+1
+NIL
+HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?
