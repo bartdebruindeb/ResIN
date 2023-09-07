@@ -66,7 +66,7 @@ to go
   compute-neighbors-attitude-matrix
   update-internal-coherence
   update-appearance
-  ;if remainder ticks 2 = 0 [export-view (word #levels ticks ".png")]
+ ; if remainder ticks 2 = 0 [export-view (word #levels ticks ".png")]
   tick
 end
 
@@ -348,6 +348,7 @@ to compute-new-attitude [attitude-correlation-matrix]
     [set attitude-in-dispute item-in-dispute * #levels + level-in-dispute]
     [set attitude-in-dispute item-in-dispute * #levels + level-in-dispute ]
     let candidate-nodes (list)
+  ifelse ordinal-behavior? [
     (ifelse
       level-in-dispute = 0 [
         set candidate-nodes (list attitude-in-dispute (attitude-in-dispute + 1))
@@ -357,6 +358,14 @@ to compute-new-attitude [attitude-correlation-matrix]
       ] [
         set candidate-nodes (list (attitude-in-dispute - 1) attitude-in-dispute (attitude-in-dispute + 1))
     ])
+
+  ][
+    let begin max (list 0 ( item-in-dispute * #levels))
+    repeat #levels [
+      set candidate-nodes lput begin candidate-nodes
+      set begin begin + 1
+    ]
+  ]
     let counter 0
     let position-list (list)
     foreach level-list [
@@ -383,10 +392,12 @@ to compute-new-attitude [attitude-correlation-matrix]
     ]
     let pos length candidate-correlation-list
     let cdt-min min candidate-correlation-list
+
   ifelse cdt-min < 0 [
     set cdt-min abs cdt-min ^ k * -1
   ][
     set cdt-min cdt-min ^ k]
+
     let normalised-list (list)
     let probability-list (list)
   foreach candidate-correlation-list [
@@ -417,6 +428,7 @@ to compute-new-attitude [attitude-correlation-matrix]
     let prob random-float last cum-probability-list
     let new-attitude-node 0
     let found-it? false
+
     foreach cum-probability-list [
       x ->
       if prob = 0 [
@@ -508,14 +520,20 @@ to update-appearance
       if show-correlations?  = false [hide-link]
     ]
     color-communities-louvain
-    ask patch 25 25 [
+    ask patch 25 29 [
       set plabel  (word "k = " k)
       set plabel-color black ]
-        ask patch 25 23 [
+        ask patch 25 27 [
       set plabel  (word "rb = " rb)
       set plabel-color black ]
-            ask patch 25 21 [
+            ask patch 25 25 [
       set plabel  (word "ticks = " ticks)
+      set plabel-color black ]
+            ask patch 25 23 [
+      set plabel  (word "#levels = " #levels)
+      set plabel-color black ]
+            ask patch 25 21 [
+      set plabel  (word "mean internal coherence = " precision mean [mean-global-internal-coherence] of people 3)
       set plabel-color black ]
   ]
 
@@ -783,9 +801,9 @@ NIL
 
 SLIDER
 174
-115
+178
 296
-148
+211
 #levels
 #levels
 2
@@ -798,9 +816,9 @@ HORIZONTAL
 
 SLIDER
 176
-78
+141
 297
-111
+174
 #items
 #items
 1
@@ -813,9 +831,9 @@ HORIZONTAL
 
 SLIDER
 181
-44
+107
 296
-77
+140
 population-size
 population-size
 0
@@ -845,9 +863,9 @@ NIL
 
 SLIDER
 175
-152
+215
 297
-185
+248
 rb
 rb
 0
@@ -890,9 +908,9 @@ update-appearance?
 
 CHOOSER
 118
-218
+281
 296
-263
+326
 degree-of-cognition
 degree-of-cognition
 "whole-world" "neighbors" "whole-world-AND-neighbors"
@@ -1024,8 +1042,7 @@ true
 true
 "" ""
 PENS
-"Global" 1.0 0 -16777216 true "" "plot mean [mean-global-internal-coherence] of people"
-"Neighbors" 1.0 0 -2674135 true "" "plot mean [mean-neighbors-internal-coherence] of people"
+"Mean" 1.0 0 -2674135 true "" "plot mean [mean-neighbors-internal-coherence] of people"
 
 TEXTBOX
 221
@@ -1126,7 +1143,7 @@ world-over-neighbors
 world-over-neighbors
 0
 1
-0.0
+0.31
 0.01
 1
 NIL
@@ -1201,18 +1218,29 @@ Subgroups
 
 SLIDER
 177
-186
-298
-219
+250
+296
+283
 k
 k
 0
-100
-0.0
-0.1
+200
+1.92
+0.01
 1
 NIL
 HORIZONTAL
+
+SWITCH
+150
+44
+294
+77
+ordinal-behavior?
+ordinal-behavior?
+1
+1
+-1000
 
 @#$#@#$#@
 ## WHAT IS IT?
