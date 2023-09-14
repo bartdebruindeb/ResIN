@@ -1267,7 +1267,7 @@ SWITCH
 77
 ordinal-behavior?
 ordinal-behavior?
-1
+0
 1
 -1000
 
@@ -1650,7 +1650,7 @@ setup</setup>
       <value value="100"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="ordinal-behavior?">
-      <value value="false"/>
+      <value value="true"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="#levels">
       <value value="3"/>
