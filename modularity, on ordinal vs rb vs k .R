@@ -10,6 +10,7 @@ pacman::p_load(NetworkToolbox,
                # graph,
                ggthemes,
                knitr ,
+               clustAnalytics,
                data.table,
                igraph,
                qgraph,
@@ -90,16 +91,18 @@ Compute Modularity
 
 
 ```{r, echo=FALSE, warning=FALSE, message=FALSE, results='df_mod'}
-#ComputeModularity <- function(p_clean_df, column_name, responses, resolution_parameter)
+#ComputeModularity <- function((p_clean_df, column_name, levels_stable, items_stable, stable_levels, stable_items, column_levels, column_items, rep)
 rp_list <- c(1)                   #resolution_parameter, add more to to list to compare modularity
 df_mod <- clean_df
 for (i in rp_list) {
-df_mod <- ComputeModularity(df_mod, "adjacency_matrix", i)
+df_mod <- ComputeModularity(df_mod, 6, "true", "true", 7, 5, 0, 0, i)
 }
 kable(df_mod<- subset(df_mod, select = -c(adjacency_matrix)), format = "html", booktabs = TRUE)
 
 #transform 'measurement' variable to numeric (as to avoid ggplot errors)
 df_mod$md_1 <- as.numeric(df_mod$md_1)
+df_mod$clusters <- as.numeric(df_mod$clusters)
+df_mod$cd <- as.numeric(df_mod$cd)
 #round 'measurement' variable to 4 decimals
 df_mod$md_1 <- round(df_mod$md_1, 4)
 #convert categorical variables to factors (as to avoid ggplot errors)
@@ -112,10 +115,19 @@ df_mod$ordinal_scale <- as.factor(df_mod$ordinal_scale)
 
 
 
-Make Graphs
+Make Graphs:
+
+
+Modularity:
 
 ```{r, echo=FALSE, warning=FALSE, message=FALSE, results='asis', fig.width=13, fig.height=7.5}
-    ggplot(data = df_mod, aes(x = time_step,
+    
+# sorted_mean <- filter(df_mod, time_step == max(df_mod$time_step)) 
+                          
+# sorted_mean <- sorted_mean[order(sorted_mean$run_number,decreasing = FALSE),]
+# cluster_means <- .colMeans(sorted_mean$clusters, 5, length(sorted_mean$clusters) / 5)
+
+ggplot(data = df_mod, aes(x = time_step,
                 y = md_1)) +
     
     geom_smooth(aes(group=k, color=k),

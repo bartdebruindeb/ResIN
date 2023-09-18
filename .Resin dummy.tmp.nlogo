@@ -1,39 +1,41 @@
 extensions[table matrix csv nw palette stats]
 
 globals [
-  global-attitude-correlation-matrix
+  global-response-correlation-matrix
   #nodes
   show-people?
+  show-responses?
   show-correlations?
   show-neighborships?
   correlation-correction
   #louvain-communities
   whole-world?
-  #no-change-in-attitude
+  #no-change-in-response
   correlation-corrected?
 
 ]
 
 breed [people person]
-breed [attitudes attitude]
-undirected-link-breed [attitude-links attitude-link]
+breed [responses response]
+undirected-link-breed [response-links response-link]
 undirected-link-breed [neighborship-links neighborship-link]
+undirected-link-breed [similarity-links similarity-link]
 
-attitude-links-own [
+response-links-own [
   weight
 ]
 
 people-own [
-  neighbors-attitude-correlation-matrix
+  neighbors-response-correlation-matrix
   item-list
   level-list
   mean-neighbors-internal-coherence
   mean-global-internal-coherence
   reference-group
-  adjusted-attitude?
+  adjusted-response?
 ]
 
-attitudes-own [
+responses-own [
   key_item
   level
   popularity
@@ -44,26 +46,26 @@ to setup
   clear-all
   reset-ticks
   if static-seed? [random-seed seed ]
-  setup-attitudes                                              ;creating the attitude nodes for visualisation
+  setup-responses                                              ;creating the response nodes for visualisation
   setup-people                                                 ;create the people and assign them with the preset items and levels in an item and level list
-  compute-global-attitude-matrix                               ;based on the the level list of all the agent, the attitude-correlation-matrix of the whole population is computed
-  compute-neighbors-attitude-matrix                            ;based on the the level list of the neighbouring agents, each agents compute their own neighbor attitude matrix
-  setup-internal-coherence                                    ; agents compute the internal coherence of the attitudes the hold by retrieving the correlation coefficient from both matrices
-  compute-global-attitude-matrix                                ;For situations when there are 3 levels or more, the disbution of internal coherence and attitude correlation matrixes needs..
-  compute-neighbors-attitude-matrix                           ; ... to be corrected due to having more (0) than (1).
+  compute-global-response-matrix                               ;based on the the level list of all the agent, the response-correlation-matrix of the whole population is computed
+  compute-neighbors-response-matrix                            ;based on the the level list of the neighbouring agents, each agents compute their own neighbor response matrix
+  setup-internal-coherence                                    ; agents compute the internal coherence of the responses the hold by retrieving the correlation coefficient from both matrices
+  compute-global-response-matrix                                ;For situations when there are 3 levels or more, the disbution of internal coherence and response correlation matrixes needs..
+  compute-neighbors-response-matrix                           ; ... to be corrected due to having more (0) than (1).
   update-internal-coherence                                 ;
-  compute-attitude-network                                    ;The weights of the attitude-links equals the correlation coefficients from the global attitude corelation matrix. Only attitudes with correlation coefficient above zero are given an attitude-link above 0
+  compute-response-network                                    ;The weights of the response-links equals the correlation coefficients from the global response corelation matrix. Only responses with correlation coefficient above zero are given an response-link above 0
   setup-world                                                 ; some visualisation global metrics functions
   update-appearance
 end
 
 
 to go
-  write-attitudes-to-file
-  set #no-change-in-attitude 0
-  alter-attitude-system
-  compute-global-attitude-matrix
-  compute-neighbors-attitude-matrix
+  write-responses-to-file
+  set #no-change-in-response 0
+  alter-response-system
+  compute-global-response-matrix
+  compute-neighbors-response-matrix
   update-internal-coherence
   update-appearance
  ; if remainder ticks 2 = 0 [export-view (word #levels ticks ".png")]
@@ -86,16 +88,16 @@ to setup-parameters
  ; set k 100
   set static-seed? false
  ; set ordinal-behavior? true
-  set write-attitudes-to-file? false
+  set write-responses-to-file? false
  ; set #items 7
   set population-size 500                    ; float number
 end
 
-to setup-attitudes
+to setup-responses
   let i 0
   let l 0
   repeat (#levels * #items) [
-    create-attitudes 1 [
+    create-responses 1 [
       set key_item i
       set level l
       set size 3
@@ -112,18 +114,18 @@ to setup-attitudes
   set #nodes #items * #levels
 end
 
-to adjust-attitudes-due-to-homophily
+to adjust-responses-due-to-homophily
   let sub-group-size (population-size - remainder population-size #subgroups) / #subgroups
   let leftovers remainder population-size #subgroups
   let counter 1
   ask people [
-    set adjusted-attitude? false]
+    set adjusted-response? false]
   repeat #subgroups [
     let reference-person person (#nodes + floor (sub-group-size * counter ) - floor (sub-group-size / 2))
     let reference-list [item-list] of reference-person
     let lo 0
     if leftovers > 0 [set lo 1]
-    ask people with [who < (sub-group-size * counter + #nodes + lo ) and adjusted-attitude? = false ] [
+    ask people with [who < (sub-group-size * counter + #nodes + lo ) and adjusted-response? = false ] [
       let counter2 0
       foreach reference-list [
         y -> if random-float 1 < degree-of-homophily [
@@ -144,7 +146,7 @@ to adjust-attitudes-due-to-homophily
           set l l  + 1
         ]
       ]
-      set adjusted-attitude? true
+      set adjusted-response? true
       set color palette:scale-gradient-hsb [[100 80 80] [360 80 80]] counter 1 #subgroups
     ]
     set counter counter + 1
@@ -163,11 +165,11 @@ to setup-people
     set size 2
 
   ]
-  setup-peoples-attitudes
+  setup-peoples-responses
   setup-network
 end
 
-to setup-peoples-attitudes
+to setup-peoples-responses
   ask people [
     set item-list (list)
     set level-list (list)
@@ -190,7 +192,7 @@ to setup-peoples-attitudes
   ]
 end
 
-to compute-global-attitude-matrix
+to compute-global-response-matrix
   let dummy-matrix matrix:make-constant population-size #nodes 0
   ;print #nodes
   let row 0                                                                                 ; make dummy matrix
@@ -198,7 +200,7 @@ to compute-global-attitude-matrix
     matrix:set-row dummy-matrix row level-list
     set row row + 1
   ]
-  let attitude-correlation-matrix matrix:make-constant #nodes #nodes 0                     ; correlation matrix with item respones as rows and columns
+  let response-correlation-matrix matrix:make-constant #nodes #nodes 0                     ; correlation matrix with item respones as rows and columns
   let counter 1
   let counter2 0
   let counter3 #levels - 1
@@ -219,7 +221,7 @@ to compute-global-attitude-matrix
       set n n + 1
     ]
    ; output-print empty-list
-    matrix:set-column attitude-correlation-matrix counter2 empty-list                                                          ; append correlation column into correlation matrix
+    matrix:set-column response-correlation-matrix counter2 empty-list                                                          ; append correlation column into correlation matrix
     if (counter2 + 1) != #nodes [
       set dummy-matrix matrix:submatrix dummy-matrix 0 1 (population-size - 1) (#nodes - counter2) ]
     ; first column is removed to prevend double calculations
@@ -227,14 +229,14 @@ to compute-global-attitude-matrix
     set counter2 counter2 + 1
     ifelse counter3 = 0 [set counter3 #levels - 1] [ set counter3 counter3 - 1]
   ]
-  set global-attitude-correlation-matrix attitude-correlation-matrix
+  set global-response-correlation-matrix response-correlation-matrix
 end
 
 
 
-to compute-neighbors-attitude-matrix
+to compute-neighbors-response-matrix
   ifelse degree-of-cognition = "whole-world" [
-    ask people [set neighbors-attitude-correlation-matrix global-attitude-correlation-matrix]
+    ask people [set neighbors-response-correlation-matrix global-response-correlation-matrix]
     ][
     ask people [
       let dummy-matrix 0
@@ -244,7 +246,7 @@ to compute-neighbors-attitude-matrix
         ask reference-group [
           matrix:set-row [dummy-matrix] of myself row level-list
         set row row + 1]                         ; 0 1 matrix with people as rows and item responses as columns
-      let attitude-correlation-matrix matrix:make-constant #nodes #nodes 0                     ; correlation matrix with item respones as rows and columns
+      let response-correlation-matrix matrix:make-constant #nodes #nodes 0                     ; correlation matrix with item respones as rows and columns
       let counter 1
       let counter2 0
       let counter3 #levels - 1
@@ -264,7 +266,7 @@ to compute-neighbors-attitude-matrix
           set empty-list lput r  empty-list                                                                              ; get correlation coefficient (r) for the two columns and put them in list
           set n n + 1
         ]
-        matrix:set-column attitude-correlation-matrix counter2 empty-list                                                          ; append correlation column into correlation matrix
+        matrix:set-column response-correlation-matrix counter2 empty-list                                                          ; append correlation column into correlation matrix
         if (counter2 + 1) != #nodes [
           set dummy-matrix matrix:submatrix dummy-matrix 0 1 (#reference-group - 1) (#nodes - counter2) ]
         ; first column is removed to prevend double calculations
@@ -273,24 +275,24 @@ to compute-neighbors-attitude-matrix
         ifelse counter3 = 0 [set counter3 #levels - 1] [ set counter3 counter3 - 1]
       ]
 
-      set neighbors-attitude-correlation-matrix attitude-correlation-matrix
+      set neighbors-response-correlation-matrix response-correlation-matrix
     ]
   ]
 end
 
-to compute-attitude-network
-  ask attitude-links [die]
+to compute-response-network
+  ask response-links [die]
   let column-counter 0
   repeat #nodes [
     let row-counter 0
-    let c matrix:get-column global-attitude-correlation-matrix column-counter
+    let c matrix:get-column global-response-correlation-matrix column-counter
     foreach c [
       x ->
       if row-counter != column-counter [
         if x > 0 [
-          ask attitude column-counter [
-            create-attitude-link-with attitude row-counter
-            ask attitude-link-with attitude row-counter [set weight x]
+          ask response column-counter [
+            create-response-link-with response row-counter
+            ask response-link-with response row-counter [set weight x]
           ]
         ]
       ]
@@ -304,27 +306,27 @@ end
 
 to setup-internal-coherence
   ask people [
-    set mean-neighbors-internal-coherence compute-internal-coherence neighbors-attitude-correlation-matrix
-    set mean-global-internal-coherence compute-internal-coherence global-attitude-correlation-matrix
+    set mean-neighbors-internal-coherence compute-internal-coherence neighbors-response-correlation-matrix
+    set mean-global-internal-coherence compute-internal-coherence global-response-correlation-matrix
   ]
   set correlation-correction mean [mean-global-internal-coherence] of people
   set correlation-corrected? true
-  adjust-attitudes-due-to-homophily
+  adjust-responses-due-to-homophily
   ask people [
-    set mean-neighbors-internal-coherence compute-internal-coherence neighbors-attitude-correlation-matrix
-    set mean-global-internal-coherence compute-internal-coherence global-attitude-correlation-matrix
+    set mean-neighbors-internal-coherence compute-internal-coherence neighbors-response-correlation-matrix
+    set mean-global-internal-coherence compute-internal-coherence global-response-correlation-matrix
   ]
 end
 
 to update-internal-coherence
   ask people [
-    set mean-neighbors-internal-coherence compute-internal-coherence neighbors-attitude-correlation-matrix
-    set mean-global-internal-coherence compute-internal-coherence global-attitude-correlation-matrix
+    set mean-neighbors-internal-coherence compute-internal-coherence neighbors-response-correlation-matrix
+    set mean-global-internal-coherence compute-internal-coherence global-response-correlation-matrix
   ]
  ; set correlation-correction mean [mean-global-internal-coherence] of people
 end
 
-to-report compute-internal-coherence [attitude-correlation-matrix]
+to-report compute-internal-coherence [response-correlation-matrix]
   let counter 0
   let position-list (list)
   let internal-coherence-list (list)
@@ -336,47 +338,47 @@ to-report compute-internal-coherence [attitude-correlation-matrix]
     x ->
     set position-list but-first position-list
     foreach position-list [ y ->
-      set internal-coherence-list lput item y matrix:get-column attitude-correlation-matrix x internal-coherence-list
+      set internal-coherence-list lput item y matrix:get-column response-correlation-matrix x internal-coherence-list
     ]
   ]
   report mean internal-coherence-list / (1 - correlation-correction)
 end
 
-to alter-attitude-system
+to alter-response-system
   if degree-of-cognition = "whole-world" [
-    ask people [compute-new-attitude global-attitude-correlation-matrix]
+    ask people [compute-new-response global-response-correlation-matrix]
   ]
   if degree-of-cognition = "neighbors" [
-    ask people [compute-new-attitude neighbors-attitude-correlation-matrix]
+    ask people [compute-new-response neighbors-response-correlation-matrix]
   ]
   if degree-of-cognition = "whole-world-AND-neighbors" [
     ifelse random-float 1 > world-over-neighbors [
-      ask people [compute-new-attitude neighbors-attitude-correlation-matrix]
+      ask people [compute-new-response neighbors-response-correlation-matrix]
     ][
-      ask people [compute-new-attitude global-attitude-correlation-matrix]
+      ask people [compute-new-response global-response-correlation-matrix]
     ]
   ]
 
 end
 
 
-to compute-new-attitude [attitude-correlation-matrix]
+to compute-new-response [response-correlation-matrix]
     let item-in-dispute random #items
     let level-in-dispute item item-in-dispute item-list
-    let attitude-in-dispute 0
+    let response-in-dispute 0
     ifelse item-in-dispute = 0
-    [set attitude-in-dispute item-in-dispute * #levels + level-in-dispute]
-    [set attitude-in-dispute item-in-dispute * #levels + level-in-dispute ]
+    [set response-in-dispute item-in-dispute * #levels + level-in-dispute]
+    [set response-in-dispute item-in-dispute * #levels + level-in-dispute ]
     let candidate-nodes (list)
   ifelse ordinal-behavior? [
     (ifelse
       level-in-dispute = 0 [
-        set candidate-nodes (list attitude-in-dispute (attitude-in-dispute + 1))
+        set candidate-nodes (list response-in-dispute (response-in-dispute + 1))
       ]
       level-in-dispute = (#levels - 1) [
-        set candidate-nodes (list (attitude-in-dispute - 1) attitude-in-dispute)
+        set candidate-nodes (list (response-in-dispute - 1) response-in-dispute)
       ] [
-        set candidate-nodes (list (attitude-in-dispute - 1) attitude-in-dispute (attitude-in-dispute + 1))
+        set candidate-nodes (list (response-in-dispute - 1) response-in-dispute (response-in-dispute + 1))
     ])
 
   ][
@@ -392,21 +394,21 @@ to compute-new-attitude [attitude-correlation-matrix]
       x -> if x = 1 [
         set position-list lput counter position-list]
       set counter counter + 1]
-    let c position attitude-in-dispute position-list
-    set position-list remove attitude-in-dispute position-list                                                                 ; remove attitude-in-dispute to compute alternative correlations
+    let c position response-in-dispute position-list
+    set position-list remove response-in-dispute position-list                                                                 ; remove response-in-dispute to compute alternative correlations
     let candidate-correlation-list (list)
     foreach candidate-nodes [ n ->
       let dummy-list position-list
       let new-correlation (list)
       repeat (c) [
-        let cor item n matrix:get-column attitude-correlation-matrix item 0 dummy-list
+        let cor item n matrix:get-column response-correlation-matrix item 0 dummy-list
         set new-correlation lput cor new-correlation
         set dummy-list but-first dummy-list
       ]
       if length dummy-list > 0 [
         foreach dummy-list [
           z  ->
-          set new-correlation lput (item z matrix:get-column attitude-correlation-matrix n) new-correlation]
+          set new-correlation lput (item z matrix:get-column response-correlation-matrix n) new-correlation]
       ]
       set candidate-correlation-list lput sum (new-correlation) candidate-correlation-list
     ]
@@ -446,66 +448,66 @@ to compute-new-attitude [attitude-correlation-matrix]
       [set cum-probability-list lput (item (counter2 - 1) cum-probability-list + x) cum-probability-list]
       set counter2 counter2 + 1]
     let prob random-float last cum-probability-list
-    let new-attitude-node 0
+    let new-response-node 0
     let found-it? false
 
     foreach cum-probability-list [
       x ->
       if prob = 0 [
-        set new-attitude-node item (position x cum-probability-list) candidate-nodes ]
+        set new-response-node item (position x cum-probability-list) candidate-nodes ]
       if prob < x and found-it? = false [
-        set new-attitude-node item (position x cum-probability-list) candidate-nodes
+        set new-response-node item (position x cum-probability-list) candidate-nodes
         set found-it? true
       ]
     ]
 
 
 
-    (ifelse new-attitude-node = attitude-in-dispute [
-      set #no-change-in-attitude #no-change-in-attitude + 1]
-      new-attitude-node < attitude-in-dispute [
+    (ifelse new-response-node = response-in-dispute [
+      set #no-change-in-response #no-change-in-response + 1]
+      new-response-node < response-in-dispute [
         set item-list replace-item item-in-dispute item-list ((item item-in-dispute item-list) - 1)
-        set level-list replace-item attitude-in-dispute level-list 0
-        set level-list replace-item (attitude-in-dispute - 1) level-list 1
+        set level-list replace-item response-in-dispute level-list 0
+        set level-list replace-item (response-in-dispute - 1) level-list 1
         ;   print (word "prob: " prob)
         ;   print (word "old item list: " item-list)
         ;   print (word "old level list: " level-list)
         ;   print (word "item in dispute: " item-in-dispute)
         ;   print (word "level in dispute: " level-in-dispute)
-        ;   print (word "attitude in dispute: " attitude-in-dispute)
-        ;   print (word "candidate attitudes: " candidate-nodes)
+        ;   print (word "response in dispute: " response-in-dispute)
+        ;   print (word "candidate responses: " candidate-nodes)
         ;   print (word "position list: " position-list)
-        ;  print (word "correlation list of alternative attitudes: " candidate-correlation-list)
+        ;  print (word "correlation list of alternative responses: " candidate-correlation-list)
         ;  print (word "normalised list: " normalised-list)
         ;  print (word "probability list: " probability-list)
         ;  print (word "cum probabality list: " cum-probability-list)
-        ;  print (word "new-attitude: " new-attitude-node)
-        ;  print (word "new-attitude: " attitude-in-dispute)
+        ;  print (word "new-response: " new-response-node)
+        ;  print (word "new-response: " response-in-dispute)
 
       ]
-      new-attitude-node > attitude-in-dispute [
+      new-response-node > response-in-dispute [
         set item-list replace-item item-in-dispute item-list ((item item-in-dispute item-list) + 1)
-        set level-list replace-item attitude-in-dispute level-list 0
-        set level-list replace-item (attitude-in-dispute + 1) level-list 1
+        set level-list replace-item response-in-dispute level-list 0
+        set level-list replace-item (response-in-dispute + 1) level-list 1
         ; print (word "prob: " prob)
         ;  print (word "old item list: " item-list)
         ;  print (word "old level list: " level-list)
         ;  print (word "item in dispute: " item-in-dispute)
         ;  print (word "level in dispute: " level-in-dispute)
-        ;  print (word "attitude in dispute: " attitude-in-dispute)
-        ;  print (word "candidate attitudes: " candidate-nodes)
+        ;  print (word "response in dispute: " response-in-dispute)
+        ;  print (word "candidate responses: " candidate-nodes)
         ;  print (word "position list: " position-list)
-        ;  print (word "correlation list of alternative attitudes: " candidate-correlation-list)
+        ;  print (word "correlation list of alternative responses: " candidate-correlation-list)
         ;  print (word "normalised list: " normalised-list)
         ;  print (word "probability list: " probability-list)
         ;  print (word "cum probabality list: " cum-probability-list)
-        ;  print (word "new-attitude: " new-attitude-node)
-        ;  print (word "new-attitude: " attitude-in-dispute)
+        ;  print (word "new-response: " new-response-node)
+        ;  print (word "new-response: " response-in-dispute)
     ])
     let counter4 0
 
     if level-in-dispute = 0 [
-      if new-attitude-node < attitude-in-dispute [
+      if new-response-node < response-in-dispute [
         ;   print (word "new item list" item-list)
         ;  print (word "new level list" level-list)
       ]
@@ -517,23 +519,26 @@ to setup-world
   set show-people? true
   set show-correlations? true
   set show-neighborships? true
+
 end
 
 
 to update-appearance
   if update-appearance? [
-    compute-attitude-network
+    compute-response-network
+    compute-similarity-network
     if hide-people? [
       set show-people? true
     show/hide-people]
     ask patches [ set pcolor white]
-    size-attitude-nodes-on-popularity
-    ; ask attitudes [ask patch-at 0 1 [ set plabel [level] of myself]]
-    repeat 3 [layout-spring attitudes attitude-links  0.5 1 #nodes * 10]
-    ask attitudes [set label level
+    size-response-nodes-on-popularity
+    ; ask responses [ask patch-at 0 1 [ set plabel [level] of myself]]
+    repeat 3 [layout-spring responses response-links  0.5 1 #nodes * 10]
+    ask responses [set label level
     set label-color black]
+    repeat 3 [layout-spring people similarity-links 0.5 1 100]
 
-    ask attitude-links [
+    ask response-links [
       set color scale-color green weight 0 1.5
       set color 255 - color
       set thickness 0.12
@@ -559,17 +564,17 @@ to update-appearance
 
 end
 
-to size-attitude-nodes-on-popularity
-  ask attitudes [set popularity 0]
+to size-response-nodes-on-popularity
+  ask responses [set popularity 0]
   ask people [
     let counter 0
     foreach level-list [x ->
       if x > 0 [
-        ask attitude counter [set popularity popularity + 1 ]
+        ask response counter [set popularity popularity + 1 ]
       ]
       set counter counter + 1 ]
   ]
-  ask attitudes [
+  ask responses [
     set size 1 + 30 * (popularity / population-size) ]
 end
 
@@ -585,13 +590,25 @@ to show/hide-people
   ]
 end
 
+to show/hide-responses
+  ifelse show-responses? = true [
+    ask responses [
+      hide-turtle]
+    set show-responses? false
+  ][
+    ask responses [
+      show-turtle ]
+    set show-responses? true
+  ]
+end
+
 to show/hide-correlations
   ifelse show-correlations? = true [
-    ask attitude-links [
+    ask response-links [
       hide-link
       set show-correlations? false]
   ][
-    ask attitude-links [
+    ask response-links [
       show-link]
     set show-correlations? true
   ]
@@ -669,7 +686,7 @@ end;MS_rewiring
 
 to color-communities-louvain
   ifelse color-communities-louvain? = true [
-    nw:set-context attitudes attitude-links
+    nw:set-context responses response-links
     ask patches [set pcolor white]
     let communities nw:louvain-communities
     set #louvain-communities length communities
@@ -690,8 +707,8 @@ end
 
 
 
-to write-attitudes-to-file
-  if write-attitudes-to-file? [
+to write-responses-to-file
+  if write-responses-to-file? [
     if ticks <= 150 [
       ; we use the `of` primitive to make a list of lists and then
       ; use the csv extension to write that list of lists to a file.
@@ -714,7 +731,7 @@ to-report adjacency-matrix
 
   let aj-string (word)
   let counter 0
-  let aj-list matrix:to-row-list  global-attitude-correlation-matrix
+  let aj-list matrix:to-row-list  global-response-correlation-matrix
   foreach aj-list [ x ->
     foreach x [ y ->
       set aj-string (word aj-string " " y) ]
@@ -725,7 +742,27 @@ to-report adjacency-matrix
 
 end
 
+to compute-similarity-network
+  ask similarity-links [die]
+  let sorted-people sort-on [who] people
+  foreach sorted-people [ x ->
+    ask x [
+      foreach but-first sorted-people [ y ->
+        let similarity occurrences 2 (map + [level-list] of x [level-list] of y)
+        if (similarity / #items) > similarity-th [
+         create-similarity-link-with y
+        ]
+      ]
+      set sorted-people but-first sorted-people
+    ]
+  ]
 
+end
+
+to-report occurrences [x the-list]
+  report reduce
+    [ [occurrence-count next-item] -> ifelse-value (next-item = x) [occurrence-count + 1] [occurrence-count] ] (fput 0 the-list)
+end
 
 
 
@@ -844,7 +881,7 @@ SLIDER
 #levels
 2
 10
-7.0
+5.0
 1
 1
 NIL
@@ -859,7 +896,7 @@ SLIDER
 #items
 1
 12
-6.0
+7.0
 1
 1
 NIL
@@ -874,7 +911,7 @@ population-size
 population-size
 0
 1000
-500.0
+200.0
 20
 1
 NIL
@@ -1084,9 +1121,9 @@ Small world
 1
 
 SWITCH
-746
+877
 10
-943
+1074
 43
 color-communities-louvain?
 color-communities-louvain?
@@ -1196,42 +1233,25 @@ false
 PENS
 "default" 1.0 0 -16777216 true "" "plot #no-change-in-attitude"
 
-BUTTON
-0
-10
-143
-43
-NIL
-write-attitudes-to-file
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
 SWITCH
 2
 42
-149
+181
 75
-write-attitudes-to-file?
-write-attitudes-to-file?
+write-responses-to-file?
+write-responses-to-file?
 1
 1
 -1000
 
 SWITCH
-947
+1078
 10
-1067
+1198
 43
 hide-people?
 hide-people?
-0
+1
 1
 -1000
 
@@ -1254,8 +1274,8 @@ k
 k
 0
 200
-100.0
-0.01
+88.5
+0.25
 1
 NIL
 HORIZONTAL
@@ -1288,6 +1308,38 @@ false
 "" ""
 PENS
 "default" 1.0 0 -16777216 true "" "plot nw:modularity(nw:louvain-communities)"
+
+SLIDER
+117
+480
+289
+513
+similarity-th
+similarity-th
+0
+1
+0.5
+0.01
+1
+NIL
+HORIZONTAL
+
+BUTTON
+744
+10
+887
+43
+show/hide responses
+show/hide-responses\n
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -1650,7 +1702,7 @@ setup</setup>
       <value value="100"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="ordinal-behavior?">
-      <value value="true"/>
+      <value value="false"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="#levels">
       <value value="3"/>

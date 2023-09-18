@@ -100,7 +100,7 @@ changeColumnNames <- function(p_clean_df, p_new_variable_names) {
 ComputeModularity <- function(p_clean_df, column_name, levels_stable, items_stable, stable_levels, stable_items, column_levels, column_items, rep) {
   for(i in 1:length(p_clean_df[[column_name]])) {
     if (levels_stable == "true" && items_stable == "true") {
-      columns <- levels_stable * items_stable
+      columns <- stable_levels * stable_items
     }
     else if (levels_stable == "true" && items_stable == "false"){
       columns <- stable_levels * p_clean_df[[i,column_items]]
@@ -114,15 +114,25 @@ ComputeModularity <- function(p_clean_df, column_name, levels_stable, items_stab
     aj_matrix <- pmax(matrix(scan(quiet = TRUE, text = toString(p_clean_df[[i,column_name]])), ncol = columns,byrow = TRUE),0)
     aj_graph <- graph_from_adjacency_matrix(aj_matrix, mode = "max", weighted = TRUE)
     cl <- cluster_leiden(aj_graph, objective_function = "modularity", resolution_parameter = rep, n_iterations = 3)
+    clusters <- length(cl)
+    cd <- conductance(aj_graph, membership(as_membership(cl)))
     md <- modularity(aj_graph, membership(as_membership(cl)))
     if (exists('md_df') && is.data.frame(get('md_df'))) {
       md_df <- rbind(md_df, md)
+      clusters_df <- rbind(clusters_df, clusters)
+      cd_df <- rbind(cd_df, cd)
     }
     else {
       md_df <- data.frame(md)
+      clusters_df <- data.frame(clusters)
+      cd_df <- data.frame(cd)
     }
   }
     p_clean_df <- cbind(p_clean_df, md_df)
     colnames(p_clean_df)[ncol(p_clean_df)] = paste("md", rep, sep = "_" )
+    p_clean_df <- cbind(p_clean_df, clusters_df)
+    colnames(p_clean_df)[ncol(p_clean_df)] = paste("clusters", sep = "_" )
+ #   p_clean_df <- cbind(p_clean_df, cd_df)
+#    colnames(p_clean_df)[ncol(p_clean_df)] = paste("cd", rep, sep = "_" )
   return (p_clean_df)
 }
